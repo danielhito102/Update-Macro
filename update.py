@@ -11,8 +11,75 @@ import ctypes
 import ast
 import math
 import requests
-import subprocess
-import sys
+import hashlib
+
+# URL do arquivo no GitHub
+github_raw_url = "https://raw.githubusercontent.com/danielhito102/Update-Macro/main/update.py"
+
+# Nome do arquivo local
+local_file_name = "update.py"
+
+# Função para baixar o conteúdo do GitHub
+def download_from_github(url):
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.text
+        else:
+            print(f"Erro ao baixar o código do GitHub. Status code: {response.status_code}")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Erro durante a requisição para baixar o código do GitHub: {str(e)}")
+        return None
+
+# Função para comparar hashes SHA-256
+def calculate_sha256(file_path):
+    try:
+        with open(file_path, "rb") as file:
+            file_hash = hashlib.sha256()
+            while chunk := file.read(4096):
+                file_hash.update(chunk)
+            return file_hash.hexdigest()
+    except FileNotFoundError:
+        return None
+
+# Verificar se o arquivo local existe e baixar/atualizar se necessário
+if os.path.isfile(local_file_name):
+    # Calcular hash SHA-256 do arquivo local
+    local_hash = calculate_sha256(local_file_name)
+
+    # Baixar o conteúdo atual do GitHub
+    github_code = download_from_github(github_raw_url)
+
+    if github_code:
+        # Calcular hash SHA-256 do conteúdo baixado
+        github_hash = hashlib.sha256(github_code.encode('utf-8')).hexdigest()
+
+        # Comparar hashes SHA-256
+        if local_hash != github_hash:
+            print("O código local está desatualizado. Atualizando para a versão mais recente...")
+
+            # Escrever o conteúdo baixado no arquivo local
+            with open(local_file_name, "w", encoding='utf-8') as file:
+                file.write(github_code)
+
+            print("Atualização concluída.")
+        else:
+            print("O código local já está atualizado.")
+    else:
+        print("Não foi possível baixar o código do GitHub. Verifique sua conexão com a internet.")
+else:
+    # Se o arquivo local não existir inicialmente, baixar o conteúdo do GitHub diretamente
+    github_code = download_from_github(github_raw_url)
+    
+    if github_code:
+        # Escrever o conteúdo baixado no arquivo local
+        with open(local_file_name, "w", encoding='utf-8') as file:
+            file.write(github_code)
+            
+        print("Arquivo local criado com a versão mais recente do GitHub.")
+    else:
+        print("Não foi possível baixar o código do GitHub. Verifique sua conexão com a internet.")
 
 # Configuração inicial do arquivo de configuração e GUI tkinter
 aimCheck = False
@@ -123,58 +190,175 @@ def loadLoadout():
     except SyntaxError:
         messagebox.showerror("Erro", f"Erro ao carregar loadout {name}. Sintaxe inválida.")
 
-def check_for_updates():
-    try:
-        github_url = 'https://raw.githubusercontent.com/danielhito102/Update-Macro/main/update.py'
-        response = requests.head(github_url)
-        
-        if 'Last-Modified' in response.headers:
-            new_last_modified = response.headers['Last-Modified']
-            
-            if 'last_modified' not in globals() or new_last_modified != globals()['last_modified']:
-                print("Detectada uma modificação no arquivo update.py. Atualizando...")
-                
-                response = requests.get(github_url)
-                
-                with open('update.py', 'wb') as file:
-                    file.write(response.content)
-                
-                globals()['last_modified'] = new_last_modified
-                
-                print("Arquivo update.py atualizado. Reiniciando o programa...")
-                restart_program()
-        else:
-            print("Cabeçalho 'Last-Modified' não encontrado na resposta.")
-    
-    except Exception as e:
-        print(f"Erro ao verificar/atualizar: {e}")
-    
-    time.sleep(60)  # Verifica a cada 60 segundos
-
-def restart_program():
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
-
-# Funções de GUI e macro continuam aqui...
-
 gui = tk.Tk()
 gui.title("Macro de Controle de Recuo")
 
-# Código da interface gráfica e macro continua aqui...
+tk.Label(gui, text="").pack()
 
-# Função principal para verificar atualizações em segundo plano
-def check_updates_thread():
+aimCheckButton = tk.Button(gui, text="Aim Check Desligado", command=toggleAimCheck)
+aimCheckButton.pack()
+
+label = tk.Label(gui, text='Controle X')
+label.pack()
+
+xControl = tk.Scale(gui, from_=-50, to=50, orient=tk.HORIZONTAL, length=200)
+xControl.pack()
+
+tk.Label(gui, text="").pack()
+
+label = tk.Label(gui, text='Controle Y')
+label.pack()
+
+yControl = tk.Scale(gui, from_=0, to=100, orient=tk.VERTICAL, length=200)
+yControl.set(1)  # Fixa o controle Y em 1
+yControl.pack()
+
+tk.Label(gui, text="").pack()
+
+label = tk.Label(gui, text='Atraso entre Movimentos (ms)')
+label.pack()
+
+delay = tk.Scale(gui, from_=1, to=50, orient=tk.HORIZONTAL, length=150)
+delay.set(10)  # Alterado para 10 ms
+delay.pack()
+
+tk.Label(gui, text="").pack()
+
+label = tk.Label(gui, text='Fator de Recuo')
+label.pack()
+
+recoil = tk.Scale(gui, from_=0.0, to=1.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+recoil.set(1.0)  # Fixa o fator de recuo em 1.0
+recoil.pack()
+
+tk.Label(gui, text="").pack()
+
+# Adicionando controles de velocidade e aceleração
+label = tk.Label(gui, text='Velocidade Horizontal')
+label.pack()
+
+speedXControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+speedXControl.set(speedX)
+speedXControl.pack()
+
+tk.Label(gui, text="").pack()
+
+label = tk.Label(gui, text='Aceleração Horizontal')
+label.pack()
+
+accelerationXControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+accelerationXControl.set(accelerationX)
+accelerationXControl.pack()
+
+tk.Label(gui, text="").pack()
+
+label = tk.Label(gui, text='Velocidade Vertical')
+label.pack()
+
+speedYControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+speedYControl.set(speedY)
+speedYControl.pack()
+
+tk.Label(gui, text="").pack()
+
+label = tk.Label(gui, text='Aceleração Vertical')
+label.pack()
+
+accelerationYControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+accelerationYControl.set(accelerationY)  # Aceleração vertical alterada para 0.5
+accelerationYControl.pack()
+
+tk.Label(gui, text="").pack()
+
+setButton = tk.Button(gui, text="Definir", command=setValues)
+setButton.pack()
+
+tk.Label(gui, text="").pack()
+
+tk.Label(gui, text=f'Pressione {hotkey} para iniciar/parar a macro.').pack()
+tk.Label(gui, text='Verifique o arquivo config.txt para alterar a hotkey e editar loadouts manualmente.').pack()
+
+tk.Label(gui, text="").pack()
+
+loadoutName = tk.Entry(gui)
+loadoutName.pack()
+
+saveButton = tk.Button(gui, text='Salvar Loadout', command=saveLoadout)
+saveButton.pack()
+
+loadButton = tk.Button(gui, text='Carregar Loadout', command=loadLoadout)
+loadButton.pack()
+
+x, y = getResolution()
+largura = int(x / 5)
+altura = int(y / 1.5)
+gui.geometry(f'{largura}x{altura}')
+
+# Código da macro
+
+habilitado = False
+
+def ajustarRecoil(x, y, fator_recoil):
+    ajuste_x = x + math.ceil(x * fator_recoil)
+    ajuste_y = y + math.ceil(y * fator_recoil)
+    return ajuste_x, ajuste_y
+
+def moveRel(x, y, fator_recoil):
+    global last_left_click_position
+
+    currentX, currentY = mouse.get_position()
+
+    if leftClicked():
+        last_left_click_position = (currentX, currentY)
+
+    if fator_recoil > 0.0:
+        adjusted_x = int(x * speedX * accelerationX + math.ceil(x * fator_recoil))
+        adjusted_y = int(y * speedY * accelerationY + math.ceil(y * fator_recoil))
+    else:
+        adjusted_x = int(x * speedX * accelerationX)
+        adjusted_y = int(y * speedY * accelerationY)
+
+    new_x = currentX + adjusted_x
+    new_y = currentY + adjusted_y
+
+    ctypes.windll.user32.mouse_event(0x0001, adjusted_x, adjusted_y, 0, 0)
+
+def toggleMacro():
+    global habilitado
+    if habilitado:
+        habilitado = False
+        print('Macro Desativada!')
+        ctypes.windll.user32.MessageBeep(0x00000010)
+    else:
+        habilitado = True
+        print('Macro Ativada!')
+        ctypes.windll.user32.MessageBeep(0xFFFFFFFF)
+
+keyboard.add_hotkey(hotkey, toggleMacro)
+
+def leftClicked():
+    if ctypes.windll.user32.GetAsyncKeyState(0x01) != 0:
+        return True
+    else:
+        return False
+
+def rightClicked():
+    if ctypes.windll.user32.GetAsyncKeyState(0x02) != 0:
+        return True
+    else:
+        return False
+
+def macroTask():
     while True:
-        check_for_updates()
+        if habilitado:
+            if aimCheck == False and leftClicked():
+                moveRel(xValue, yValue, recoilFactor)
+            elif aimCheck == True and leftClicked() and rightClicked():
+                moveRel(xValue, yValue, recoilFactor)
+        time.sleep(delayValue / 1000)
 
-# Thread para verificar atualizações em segundo plano
-update_thread = threading.Thread(target=check_updates_thread)
-update_thread.daemon = True
-update_thread.start()
-
-# Código da macro e execução da GUI
-# ...
-
-# Código da macro e execução da GUI continua aqui...
+thread = threading.Thread(target=macroTask)
+thread.daemon = True
+thread.start()
 
 gui.mainloop()
