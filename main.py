@@ -19,7 +19,7 @@ aimCheck = False
 
 xValue = 0
 yValue = 0
-delayValue = 2  # Atraso entre movimentos em 10 ms
+delayValue = 5  # Atraso entre movimentos em 10 ms
 recoilFactor = 1.0
 speedX = 0.5  # Velocidade horizontal
 speedY = 2.0  # Velocidade vertical
