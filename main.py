@@ -6,8 +6,7 @@ from tkinter import messagebox
 import configparser
 import ast
 import os
-import subprocess
-import sys
+import hashlib  # Importar hashlib para cálculo de hash MD5
 
 # URL do arquivo raw no GitHub
 github_raw_url = 'https://raw.githubusercontent.com/danielhito102/Update-Macro/main/main.py'
@@ -41,18 +40,12 @@ def check_for_update(gui):
                     print("Nova versão encontrada. Atualizando...")
                     with open(local_file_path, 'w', encoding='utf-8') as f:
                         f.write(current_content)
-                    # Atualizar a GUI principal
-                    gui.update_gui()
+                    gui.update_gui()  # Atualizar a GUI com os novos valores
 
             time.sleep(60)  # Verificar a cada 60 segundos
         except Exception as e:
             print(f"Erro ao verificar atualizações: {str(e)}")
             time.sleep(60)
-
-# Função para reiniciar o programa
-def restart_program():
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
 
 # Classe principal da GUI
 class MainGUI:
@@ -63,7 +56,7 @@ class MainGUI:
         # Variáveis para armazenar os valores das configurações (exemplo)
         self.xValue = 0
         self.yValue = 0
-        self.delayValue = 1
+        self.delayValue = 10
         self.recoilFactor = 1.0
         self.speedX = 0.5
         self.speedY = 2.0
@@ -188,10 +181,15 @@ class MainGUI:
             messagebox.showerror("Erro", f"Erro ao carregar loadout {name}. Sintaxe inválida.")
 
     def update_gui(self):
-        # Atualiza os valores nos controles da GUI conforme os novos valores
+        # Atualize todos os controles da GUI com os valores atualizados
         self.xControl.set(self.xValue)
+        self.yControl.set(self.yValue)
         self.delay.set(self.delayValue)
         self.recoil.set(self.recoilFactor)
+        self.speedXControl.set(self.speedX)
+        self.speedYControl.set(self.speedY)
+        self.accelerationXControl.set(self.accelerationX)
+        self.accelerationYControl.set(self.accelerationY)
         # Adicione aqui outros controles que precisam ser atualizados
 
 def main():
