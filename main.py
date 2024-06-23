@@ -29,7 +29,7 @@ def download_file(url):
         return None
 
 # Função para verificar e aplicar atualizações
-def check_for_update():
+def check_for_update(gui):
     while True:
         try:
             current_content = download_file(github_raw_url)
@@ -41,7 +41,8 @@ def check_for_update():
                     print("Nova versão encontrada. Atualizando...")
                     with open(local_file_path, 'w', encoding='utf-8') as f:
                         f.write(current_content)
-                    restart_program()
+                    # Atualizar a GUI principal
+                    gui.update_gui()
 
             time.sleep(60)  # Verificar a cada 60 segundos
         except Exception as e:
@@ -53,146 +54,157 @@ def restart_program():
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
-# Thread para verificação de atualizações
-update_thread = threading.Thread(target=check_for_update)
-update_thread.daemon = True
-update_thread.start()
+# Classe principal da GUI
+class MainGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Macro de Controle de Recuo")
 
-# Inicialização da GUI
-gui = tk.Tk()
-gui.title("Macro de Controle de Recuo")
+        # Variáveis para armazenar os valores das configurações (exemplo)
+        self.xValue = 0
+        self.yValue = 0
+        self.delayValue = 10
+        self.recoilFactor = 1.0
+        self.speedX = 0.5
+        self.speedY = 2.0
+        self.accelerationX = 0.5
+        self.accelerationY = 0.5
+        self.aimCheck = False
 
-# Variáveis para armazenar os valores das configurações (exemplo)
-xValue = 0
-yValue = 0
-delayValue = 10
-recoilFactor = 1.0
-speedX = 0.5
-speedY = 2.0
-accelerationX = 0.5
-accelerationY = 0.5
-aimCheck = False
+        # Labels e botões do GUI (exemplo)
+        tk.Label(root, text='Configurações da Macro').pack()
 
-# Funções para o GUI (exemplo)
-def setValues():
-    global xValue, yValue, delayValue, recoilFactor, speedX, speedY, accelerationX, accelerationY
-    xValue = xControl.get() * speedX
-    yValue = 1 * speedY  # Valor fixo de 1 para controle Y
-    delayValue = delay.get()
-    recoilFactor = recoil.get()
-    accelerationX = accelerationXControl.get()
-    accelerationY = accelerationYControl.get()
-    print(f"Valores definidos - X:{xValue} Y:{yValue} D:{delayValue} Fator de Recuo:{recoilFactor}")
+        self.aimCheckButton = tk.Button(root, text="Aim Check Desligado", command=self.toggle_aim_check)
+        self.aimCheckButton.pack()
 
-def toggleAimCheck():
-    global aimCheck
-    if aimCheck:
-        aimCheck = False
-        aimCheckButton.config(text='Aim Check Desligado')
-    else:
-        aimCheck = True
-        aimCheckButton.config(text='Aim Check Ligado')
+        tk.Label(root, text='Controle X').pack()
+        self.xControl = tk.Scale(root, from_=-50, to=50, orient=tk.HORIZONTAL, length=200)
+        self.xControl.pack()
 
-def saveLoadout():
-    setValues()
-    name = str(loadoutName.get())
-    loadoutName.delete(0, tk.END)
-    config = configparser.ConfigParser()
-    config.read('config.txt')
-    if not config.has_section('loadouts'):
-        config.add_section('loadouts')
-    config.set('loadouts', name, f'[{xValue},{yValue},{delayValue},{recoilFactor}]')
-    with open('config.txt', 'w') as fp:
-        config.write(fp)
+        tk.Label(root, text='Controle Y').pack()
+        self.yControl = tk.Scale(root, from_=0, to=100, orient=tk.VERTICAL, length=200)
+        self.yControl.set(1)
+        self.yControl.pack()
 
-def loadLoadout():
-    global xValue, yValue, delayValue, recoilFactor, speedX, speedY, accelerationX, accelerationY
-    setValues()
-    name = str(loadoutName.get())
-    loadoutName.delete(0, tk.END)
-    config = configparser.ConfigParser()
-    config.read('config.txt')
+        tk.Label(root, text='Atraso entre Movimentos (ms)').pack()
+        self.delay = tk.Scale(root, from_=1, to=50, orient=tk.HORIZONTAL, length=150)
+        self.delay.set(10)
+        self.delay.pack()
 
-    try:
-        loadout = config.get('loadouts', name)
-        loadoutList = ast.literal_eval(loadout)
-        if len(loadoutList) != 4:
-            raise ValueError("Loadout não possui 4 elementos")
+        tk.Label(root, text='Fator de Recuo').pack()
+        self.recoil = tk.Scale(root, from_=0.0, to=1.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+        self.recoil.set(1.0)
+        self.recoil.pack()
 
-        xValue = loadoutList[0]
-        yValue = loadoutList[1]
-        delayValue = loadoutList[2]
-        recoilFactor = loadoutList[3]
+        tk.Label(root, text='Velocidade Horizontal').pack()
+        self.speedXControl = tk.Scale(root, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+        self.speedXControl.set(self.speedX)
+        self.speedXControl.pack()
 
-        xControl.set(loadoutList[0])
-        delay.set(loadoutList[2])
-        recoil.set(loadoutList[3])
+        tk.Label(root, text='Aceleração Horizontal').pack()
+        self.accelerationXControl = tk.Scale(root, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+        self.accelerationXControl.set(self.accelerationX)
+        self.accelerationXControl.pack()
 
-    except configparser.NoOptionError:
-        messagebox.showwarning("Erro", f"Nenhum loadout chamado {name} encontrado")
-    except ValueError as e:
-        messagebox.showerror("Erro", f"Erro ao carregar loadout {name}: {str(e)}")
-    except SyntaxError:
-        messagebox.showerror("Erro", f"Erro ao carregar loadout {name}. Sintaxe inválida.")
+        tk.Label(root, text='Velocidade Vertical').pack()
+        self.speedYControl = tk.Scale(root, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+        self.speedYControl.set(self.speedY)
+        self.speedYControl.pack()
 
-# Labels e botões do GUI (exemplo)
-tk.Label(gui, text='Configurações da Macro').pack()
+        tk.Label(root, text='Aceleração Vertical').pack()
+        self.accelerationYControl = tk.Scale(root, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
+        self.accelerationYControl.set(self.accelerationY)
+        self.accelerationYControl.pack()
 
-aimCheckButton = tk.Button(gui, text="Aim Check Desligado", command=toggleAimCheck)
-aimCheckButton.pack()
+        self.setButton = tk.Button(root, text="Definir", command=self.set_values)
+        self.setButton.pack()
 
-tk.Label(gui, text='Controle X').pack()
-xControl = tk.Scale(gui, from_=-50, to=50, orient=tk.HORIZONTAL, length=200)
-xControl.pack()
+        tk.Label(root, text=f'Pressione F1 para iniciar/parar a macro.').pack()
 
-tk.Label(gui, text='Controle Y').pack()
-yControl = tk.Scale(gui, from_=0, to=100, orient=tk.VERTICAL, length=200)
-yControl.set(1)
-yControl.pack()
+        self.loadoutName = tk.Entry(root)
+        self.loadoutName.pack()
 
-tk.Label(gui, text='Atraso entre Movimentos (ms)').pack()
-delay = tk.Scale(gui, from_=1, to=50, orient=tk.HORIZONTAL, length=150)
-delay.set(10)
-delay.pack()
+        self.saveButton = tk.Button(root, text='Salvar Loadout', command=self.save_loadout)
+        self.saveButton.pack()
 
-tk.Label(gui, text='Fator de Recuo').pack()
-recoil = tk.Scale(gui, from_=0.0, to=1.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
-recoil.set(1.0)
-recoil.pack()
+        self.loadButton = tk.Button(root, text='Carregar Loadout', command=self.load_loadout)
+        self.loadButton.pack()
 
-tk.Label(gui, text='Velocidade Horizontal').pack()
-speedXControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
-speedXControl.set(speedX)
-speedXControl.pack()
+    def set_values(self):
+        self.xValue = self.xControl.get() * self.speedX
+        self.yValue = 1 * self.speedY  # Valor fixo de 1 para controle Y
+        self.delayValue = self.delay.get()
+        self.recoilFactor = self.recoil.get()
+        self.accelerationX = self.accelerationXControl.get()
+        self.accelerationY = self.accelerationYControl.get()
+        print(f"Valores definidos - X:{self.xValue} Y:{self.yValue} D:{self.delayValue} Fator de Recuo:{self.recoilFactor}")
 
-tk.Label(gui, text='Aceleração Horizontal').pack()
-accelerationXControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
-accelerationXControl.set(accelerationX)
-accelerationXControl.pack()
+    def toggle_aim_check(self):
+        self.aimCheck = not self.aimCheck
+        if self.aimCheck:
+            self.aimCheckButton.config(text='Aim Check Ligado')
+        else:
+            self.aimCheckButton.config(text='Aim Check Desligado')
 
-tk.Label(gui, text='Velocidade Vertical').pack()
-speedYControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
-speedYControl.set(speedY)
-speedYControl.pack()
+    def save_loadout(self):
+        self.set_values()
+        name = str(self.loadoutName.get())
+        self.loadoutName.delete(0, tk.END)
+        config = configparser.ConfigParser()
+        config.read('config.txt')
+        if not config.has_section('loadouts'):
+            config.add_section('loadouts')
+        config.set('loadouts', name, f'[{self.xValue},{self.yValue},{self.delayValue},{self.recoilFactor}]')
+        with open('config.txt', 'w') as fp:
+            config.write(fp)
 
-tk.Label(gui, text='Aceleração Vertical').pack()
-accelerationYControl = tk.Scale(gui, from_=0.5, to=2.0, resolution=0.1, orient=tk.HORIZONTAL, length=150)
-accelerationYControl.set(accelerationY)
-accelerationYControl.pack()
+    def load_loadout(self):
+        name = str(self.loadoutName.get())
+        self.loadoutName.delete(0, tk.END)
+        config = configparser.ConfigParser()
+        config.read('config.txt')
 
-setButton = tk.Button(gui, text="Definir", command=setValues)
-setButton.pack()
+        try:
+            loadout = config.get('loadouts', name)
+            loadout_list = ast.literal_eval(loadout)
+            if len(loadout_list) != 4:
+                raise ValueError("Loadout não possui 4 elementos")
 
-tk.Label(gui, text=f'Pressione F1 para iniciar/parar a macro.').pack()
+            self.xValue = loadout_list[0]
+            self.yValue = loadout_list[1]
+            self.delayValue = loadout_list[2]
+            self.recoilFactor = loadout_list[3]
 
-loadoutName = tk.Entry(gui)
-loadoutName.pack()
+            self.xControl.set(loadout_list[0])
+            self.delay.set(loadout_list[2])
+            self.recoil.set(loadout_list[3])
 
-saveButton = tk.Button(gui, text='Salvar Loadout', command=saveLoadout)
-saveButton.pack()
+            print(f"Loadout {name} carregado com sucesso.")
+        except configparser.NoOptionError:
+            messagebox.showwarning("Erro", f"Nenhum loadout chamado {name} encontrado")
+        except ValueError as e:
+            messagebox.showerror("Erro", f"Erro ao carregar loadout {name}: {str(e)}")
+        except SyntaxError:
+            messagebox.showerror("Erro", f"Erro ao carregar loadout {name}. Sintaxe inválida.")
 
-loadButton = tk.Button(gui, text='Carregar Loadout', command=loadLoadout)
-loadButton.pack()
+    def update_gui(self):
+        # Atualiza os valores nos controles da GUI conforme os novos valores
+        self.xControl.set(self.xValue)
+        self.delay.set(self.delayValue)
+        self.recoil.set(self.recoilFactor)
+        # Adicione aqui outros controles que precisam ser atualizados
 
-# Laço principal da GUI
-gui.mainloop()
+def main():
+    # Inicializa a GUI principal
+    root = tk.Tk()
+    gui = MainGUI(root)
+
+    # Verifica e inicia a atualização em uma thread separada, passando o objeto gui como parâmetro
+    update_thread = threading.Thread(target=check_for_update, args=(gui,))
+    update_thread.daemon = True
+    update_thread.start()
+
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
