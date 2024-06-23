@@ -63,7 +63,7 @@ class MainGUI:
         # Variáveis para armazenar os valores das configurações (exemplo)
         self.xValue = 0
         self.yValue = 0
-        self.delayValue = 10
+        self.delayValue = 1
         self.recoilFactor = 1.0
         self.speedX = 0.5
         self.speedY = 2.0
