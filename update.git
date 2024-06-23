@@ -10,6 +10,7 @@ import threading
 import ctypes
 import ast
 import math
+import urllib.request
 
 # Configuração inicial do arquivo de configuração e GUI tkinter
 aimCheck = False
@@ -290,5 +291,42 @@ def macroTask():
 thread = threading.Thread(target=macroTask)
 thread.daemon = True
 thread.start()
+
+# Função para verificar e aplicar o arquivo de atualização do GitHub
+def update_from_github():
+    try:
+        update_file_url = 'https://github.com/danielhito102/Update-Macro/raw/main/update.git'
+
+        # Obter o conteúdo do arquivo de atualização
+        with urllib.request.urlopen(update_file_url) as response:
+            remote_content = response.read().decode('utf-8')
+
+        local_content = ''
+        with open('update.git', 'r', encoding='utf-8') as f:
+            local_content = f.read()
+
+        # Comparar conteúdos
+        if remote_content.strip() != local_content.strip():
+            print("Conteúdos diferentes. Aplicando atualização...")
+
+            # Aplicar as alterações (exemplo hipotético)
+            # Aqui você precisa implementar a lógica para aplicar as alterações conforme necessário
+
+            with open('update.git', 'w', encoding='utf-8') as f:
+                f.write(remote_content)
+
+            print("Atualização aplicada com sucesso!")
+            return True
+        else:
+            print("Os conteúdos já são iguais. Nenhuma atualização necessária.")
+            return True  # Ou False se quiser tratar caso não haja atualização
+
+    except Exception as e:
+        print(f"Erro ao verificar/atualizar: {str(e)}")
+        return False
+
+# Exemplo de uso da função de verificação/atualização
+if update_from_github():
+    print("Reinicie o programa para aplicar as atualizações.")
 
 gui.mainloop()
