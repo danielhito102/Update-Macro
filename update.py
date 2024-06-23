@@ -12,6 +12,7 @@ import ast
 import math
 import requests
 import subprocess
+import sys
 
 # Configuração inicial do arquivo de configuração e GUI tkinter
 aimCheck = False
@@ -126,20 +127,24 @@ def check_for_updates():
     try:
         github_url = 'https://raw.githubusercontent.com/danielhito102/Update-Macro/main/update.py'
         response = requests.head(github_url)
-        new_last_modified = response.headers['Last-Modified']
         
-        if 'last_modified' not in globals() or new_last_modified != globals()['last_modified']:
-            print("Detectada uma modificação no arquivo update.py. Atualizando...")
+        if 'Last-Modified' in response.headers:
+            new_last_modified = response.headers['Last-Modified']
             
-            response = requests.get(github_url)
-            
-            with open('update.py', 'wb') as file:
-                file.write(response.content)
-            
-            globals()['last_modified'] = new_last_modified
-            
-            print("Arquivo update.py atualizado. Reiniciando o programa...")
-            restart_program()
+            if 'last_modified' not in globals() or new_last_modified != globals()['last_modified']:
+                print("Detectada uma modificação no arquivo update.py. Atualizando...")
+                
+                response = requests.get(github_url)
+                
+                with open('update.py', 'wb') as file:
+                    file.write(response.content)
+                
+                globals()['last_modified'] = new_last_modified
+                
+                print("Arquivo update.py atualizado. Reiniciando o programa...")
+                restart_program()
+        else:
+            print("Cabeçalho 'Last-Modified' não encontrado na resposta.")
     
     except Exception as e:
         print(f"Erro ao verificar/atualizar: {e}")
