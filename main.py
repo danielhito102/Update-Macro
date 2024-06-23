@@ -7,12 +7,12 @@ import configparser
 import ast
 
 # URL do arquivo raw no GitHub
-github_raw_url = 'https://raw.githubusercontent.com/danielhito102/Update-Macro/main/main.py'
+github_raw_url = 'https://raw.githubusercontent.com/danielhito102/Update-Macro/main/config.txt'
 
 # Caminho local para salvar o arquivo atualizado
-local_file_path = 'main.py'
+local_file_path = 'config.txt'
 
-# Variáveis globais para armazenar os valores das configurações (exemplo)
+# Variáveis globais para armazenar os valores das configurações
 xValue = 0
 yValue = 0
 delayValue = 10
@@ -57,11 +57,11 @@ def save_loadout():
     name = str(loadoutName.get())
     loadoutName.delete(0, tk.END)
     config = configparser.ConfigParser()
-    config.read('config.txt')
+    config.read(local_file_path)
     if not config.has_section('loadouts'):
         config.add_section('loadouts')
     config.set('loadouts', name, f'[{xValue},{yValue},{delayValue},{recoilFactor}]')
-    with open('config.txt', 'w') as fp:
+    with open(local_file_path, 'w') as fp:
         config.write(fp)
 
 # Função para carregar o Loadout
@@ -71,7 +71,7 @@ def load_loadout():
     name = str(loadoutName.get())
     loadoutName.delete(0, tk.END)
     config = configparser.ConfigParser()
-    config.read('config.txt')
+    config.read(local_file_path)
 
     try:
         loadout = config.get('loadouts', name)
@@ -110,6 +110,7 @@ def download_file(url):
 
 # Função para verificar e aplicar atualizações
 def check_for_update():
+    global xValue, yValue, delayValue, recoilFactor, speedX, speedY, accelerationX, accelerationY, aimCheck
     current_content = download_file(github_raw_url)
     if current_content:
         with open(local_file_path, 'r', encoding='utf-8') as f:
@@ -117,31 +118,25 @@ def check_for_update():
 
         if current_content != local_content:
             print("Nova versão encontrada. Atualizando...")
-            update_values(current_content)
-            update_gui()
+            try:
+                config = ast.literal_eval(current_content)
+                xValue = config.get('xValue', xValue)
+                yValue = config.get('yValue', yValue)
+                delayValue = config.get('delayValue', delayValue)
+                recoilFactor = config.get('recoilFactor', recoilFactor)
+                speedX = config.get('speedX', speedX)
+                speedY = config.get('speedY', speedY)
+                accelerationX = config.get('accelerationX', accelerationX)
+                accelerationY = config.get('accelerationY', accelerationY)
+                aimCheck = config.get('aimCheck', aimCheck)
+
+                update_gui()
+                print("Valores atualizados com sucesso.")
+            except Exception as e:
+                print(f"Erro ao atualizar valores: {str(e)}")
 
     # Verifica novamente após 60 segundos
     threading.Timer(60, check_for_update).start()
-
-# Função para atualizar os valores com base no conteúdo baixado do GitHub
-def update_values(content):
-    global xValue, yValue, delayValue, recoilFactor, speedX, speedY, accelerationX, accelerationY, aimCheck
-    try:
-        # Interpretar o conteúdo do GitHub e atualizar as variáveis globais
-        config = ast.literal_eval(content)
-        xValue = config.get('xValue', xValue)
-        yValue = config.get('yValue', yValue)
-        delayValue = config.get('delayValue', delayValue)
-        recoilFactor = config.get('recoilFactor', recoilFactor)
-        speedX = config.get('speedX', speedX)
-        speedY = config.get('speedY', speedY)
-        accelerationX = config.get('accelerationX', accelerationX)
-        accelerationY = config.get('accelerationY', accelerationY)
-        aimCheck = config.get('aimCheck', aimCheck)
-        
-        print("Valores atualizados com sucesso.")
-    except Exception as e:
-        print(f"Erro ao atualizar valores: {str(e)}")
 
 # Função para atualizar a GUI com os novos valores
 def update_gui():
@@ -155,6 +150,10 @@ def update_gui():
     speedYControl.set(speedY)
     accelerationXControl.set(accelerationX)
     accelerationYControl.set(accelerationY)
+    if aimCheck:
+        aimCheckButton.config(text='Aim Check Ligado')
+    else:
+        aimCheckButton.config(text='Aim Check Desligado')
 
 # Labels e botões do GUI (exemplo)
 tk.Label(root, text='Controle X').pack()
